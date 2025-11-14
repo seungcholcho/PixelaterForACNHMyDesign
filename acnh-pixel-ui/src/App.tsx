@@ -6,6 +6,63 @@ import "./App.css";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+// HEX → HSL 변환
+function hexToHSL(hex: string) {
+  hex = hex.replace("#", "");
+
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  let l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  return {
+    h: Math.round(h * 360), // 0~360
+    s: Math.round(s * 100), // 0~100
+    l: Math.round(l * 100), // 0~100
+  };
+}
+
+// HSL → 동숲형 HSV 인덱스 (H:0-29, S:0-14, V:0-14)
+function hslToACNH(h: number, s: number, l: number) {
+  // 색상: 30단계 → 12도씩
+  const hueIndex = Math.floor(h / 12); // 0~29
+
+  // 채도/명도: 15단계 → 약 6.666%씩
+  const step = 100 / 15;
+  const satIndex = Math.floor(s / step); // 0~14
+  const valIndex = Math.floor(l / step); // 0~14
+
+  return {
+    h: Math.min(29, Math.max(0, hueIndex)),
+    s: Math.min(14, Math.max(0, satIndex)),
+    v: Math.min(14, Math.max(0, valIndex)),
+  };
+}
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -211,20 +268,27 @@ function App() {
               결과 이미지 다운로드
             </button>
 
-            {/* 사용된 색상 표시 영역 */}
+            {/* 사용된 색상 표시 영역 - 동숲 HSV 인덱스로 표기 */}
             {usedColors.length > 0 && (
               <div className="color-list">
                 <h3>사용된 색상 ({usedColors.length}개)</h3>
                 <div className="color-grid">
-                  {usedColors.map((c) => (
-                    <div key={c} className="color-item">
-                      <div
-                        className="color-swatch"
-                        style={{ backgroundColor: c }}
-                      ></div>
-                      <div className="color-code">{c}</div>
-                    </div>
-                  ))}
+                  {usedColors.map((c) => {
+                    const { h, s, l } = hexToHSL(c);
+                    const acnh = hslToACNH(h, s, l);
+
+                    return (
+                      <div key={c} className="color-item">
+                        <div
+                          className="color-swatch"
+                          style={{ backgroundColor: c }}
+                        ></div>
+                        <div className="color-code">
+                          H:{acnh.h} S:{acnh.s} V:{acnh.v}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
