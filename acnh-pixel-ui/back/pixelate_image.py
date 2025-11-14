@@ -59,7 +59,7 @@ if __name__ == "__main__":
     output = Image.open(input_path).convert("RGB")
     output = quantize_colors(output,128)
     output = pixelate_image(output, 32, 32, "nearest")
-    output = quantize_colors(output,16)
+    output = quantize_colors(output,15)
     output = apply_palette(output, PALETTE)
     output = output.resize((512, 512), Image.Resampling.NEAREST)
     output.save("./back/pixelated/output.png", format="PNG")
