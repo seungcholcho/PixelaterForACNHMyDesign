@@ -104,7 +104,7 @@ def run_pipeline(
     small = pixelate_image(img_q, pixel_size, pixel_size, resample)
 
     # 3 - 16색 퀀타이즈
-    small_q = quantize_colors(small, 16)
+    small_q = quantize_colors(small, 15)
 
     # 4 - 동숲 팔레트에 스냅
     snapped = apply_palette(small_q, PALETTE)
