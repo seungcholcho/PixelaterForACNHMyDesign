@@ -183,3 +183,30 @@ body {
 .color-code {
   color: #444;
 }
+
+.color-list {
+  margin-top: 16px;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 8px;
+}
+
+.color-item {
+  text-align: center;
+  font-size: 12px;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  margin: 0 auto 4px;
+  border: 1px solid #ccc;
+}
+
+.color-code {
+  color: #444;
+}
