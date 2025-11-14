@@ -14,6 +14,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 사용된 색상(hex 문자열 리스트)
+  const [usedColors, setUsedColors] = useState<string[]>([]);
+
+  // 이미지 URL 해제
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -21,10 +25,12 @@ function App() {
     };
   }, [previewUrl, resultUrl]);
 
+  // 파일 선택
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] ?? null;
     setFile(selected);
     setError(null);
+    setUsedColors([]);
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     if (resultUrl) URL.revokeObjectURL(resultUrl);
@@ -36,12 +42,14 @@ function App() {
     }
   };
 
+  // 변환 버튼 클릭
   const handleTransformClick = async () => {
     if (!file) return;
 
     setIsLoading(true);
     setError(null);
     setResultUrl(null);
+    setUsedColors([]);
 
     try {
       const formData = new FormData();
@@ -67,6 +75,7 @@ function App() {
 
       const dataUrl = `data:image/png;base64,${data.image}`;
       setResultUrl(dataUrl);
+      extractColors(dataUrl); 
     } catch (err: any) {
       console.error(err);
       setError(err.message ?? "이미지 변환 중 오류가 발생했습니다.");
@@ -75,6 +84,64 @@ function App() {
     }
   };
 
+  // RGB → HEX
+  const rgbToHex = (r: number, g: number, b: number) => {
+    return (
+      "#" +
+      [r, g, b]
+        .map((x) => x.toString(16).padStart(2, "0"))
+        .join("")
+    );
+  };
+
+  // 이미지에서 사용된 색상 추출
+  const extractColors = (imgUrl: string) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imgUrl;
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      const colors = new Set<string>();
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        // 완전 투명은 제외
+        if (a === 0) continue;
+
+        const hex = rgbToHex(r, g, b);
+        colors.add(hex);
+      }
+
+      // Set → 배열로 변환
+      setUsedColors(Array.from(colors));
+    };
+  };
+
+  // resultUrl이 바뀔 때마다 색 추출
+  useEffect(() => {
+    if (resultUrl) {
+      extractColors(resultUrl);
+    } else {
+      setUsedColors([]);
+    }
+  }, [resultUrl]);
+
+  // 다운로드 버튼
   const handleDownloadClick = () => {
     if (!resultUrl) return;
 
@@ -144,6 +211,24 @@ function App() {
             >
               결과 이미지 다운로드
             </button>
+
+            {/* 사용된 색상 표시 영역 */}
+            {usedColors.length > 0 && (
+              <div className="color-list">
+                <h3>사용된 색상 ({usedColors.length}개)</h3>
+                <div className="color-grid">
+                  {usedColors.map((c) => (
+                    <div key={c} className="color-item">
+                      <div
+                        className="color-swatch"
+                        style={{ backgroundColor: c }}
+                      ></div>
+                      <div className="color-code">{c}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>
