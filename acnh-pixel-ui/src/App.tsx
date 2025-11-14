@@ -6,60 +6,79 @@ import "./App.css";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
-// HEX → HSL 변환
-function hexToHSL(hex: string) {
+// HEX → RGB
+function hexToRGB(hex: string) {
   hex = hex.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return { r, g, b };
+}
 
-  const r = parseInt(hex.substring(0, 2), 16) / 255;
-  const g = parseInt(hex.substring(2, 4), 16) / 255;
-  const b = parseInt(hex.substring(4, 6), 16) / 255;
+// RGB(0-255) → HSV (H:0-360, S:0-100, V:0-100)
+function rgbToHSV(r: number, g: number, b: number) {
+  const rN = r / 255;
+  const gN = g / 255;
+  const bN = b / 255;
 
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
+  const max = Math.max(rN, gN, bN);
+  const min = Math.min(rN, gN, bN);
+  const d = max - min;
+
   let h = 0;
   let s = 0;
-  let l = (max + min) / 2;
+  const v = max;
 
-  if (max !== min) {
-    const d = max - min;
-
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
+  if (d === 0) {
+    h = 0;
+  } else {
     switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
+      case rN:
+        h = ((gN - bN) / d + (gN < bN ? 6 : 0));
         break;
-      case g:
-        h = (b - r) / d + 2;
+      case gN:
+        h = (bN - rN) / d + 2;
         break;
-      case b:
-        h = (r - g) / d + 4;
+      case bN:
+        h = (rN - gN) / d + 4;
         break;
     }
-    h /= 6;
+    h *= 60; // 0~360
+  }
+
+  if (max === 0) {
+    s = 0;
+  } else {
+    s = d / max;
   }
 
   return {
-    h: Math.round(h * 360), // 0~360
-    s: Math.round(s * 100), // 0~100
-    l: Math.round(l * 100), // 0~100
+    h: Math.round(h),        // 0~360
+    s: Math.round(s * 100),  // 0~100
+    v: Math.round(v * 100),  // 0~100
   };
 }
 
-// HSL → 동숲형 HSV 인덱스 (H:0-29, S:0-14, V:0-14)
-function hslToACNH(h: number, s: number, l: number) {
-  // 색상: 30단계 → 12도씩
-  const hueIndex = Math.floor(h / 12); // 0~29
+// HSV → 동숲형 HSV 인덱스 (H:0-29, S:0-14, V:0-14)
+function hsvToACNH(h: number, s: number, v: number) {
+  // 색상: 30단계 → 12도씩 (0~359를 30등분)
+  let hueIndex = Math.floor(h / 12); // 0~29 정도
+  if (hueIndex >= 30) hueIndex = 29;
 
-  // 채도/명도: 15단계 → 약 6.666%씩
-  const step = 100 / 15;
-  const satIndex = Math.floor(s / step); // 0~14
-  const valIndex = Math.floor(l / step); // 0~14
+  // 채도/밝기: 15단계 → 약 6.666%씩
+  const step = 100 / 15; // ≈ 6.666...
+  let satIndex = Math.floor(s / step); // 0~14
+  let valIndex = Math.floor(v / step); // 0~14
+
+  if (satIndex > 14) satIndex = 14;
+  if (valIndex > 14) valIndex = 14;
+  if (satIndex < 0) satIndex = 0;
+  if (valIndex < 0) valIndex = 0;
 
   return {
-    h: Math.min(29, Math.max(0, hueIndex)),
-    s: Math.min(14, Math.max(0, satIndex)),
-    v: Math.min(14, Math.max(0, valIndex)),
+    h: hueIndex,
+    s: satIndex,
+    v: valIndex,
   };
 }
 
@@ -274,8 +293,9 @@ function App() {
                 <h3>사용된 색상 ({usedColors.length}개)</h3>
                 <div className="color-grid">
                   {usedColors.map((c) => {
-                    const { h, s, l } = hexToHSL(c);
-                    const acnh = hslToACNH(h, s, l);
+                    const { r, g, b } = hexToRGB(c);
+                    const { h, s, v } = rgbToHSV(r, g, b);
+                    const acnh = hsvToACNH(h, s, v);
 
                     return (
                       <div key={c} className="color-item">
